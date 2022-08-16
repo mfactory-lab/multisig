@@ -5,6 +5,8 @@ pub struct Multisig {
     /// Owners of the [Multisig]
     pub owners: Vec<Pubkey>,
     pub threshold: u8,
+    /// Total number of [Transaction]s on this [Multisig]
+    pub transaction_count: u32,
     /// Sequence of the ownership set
     ///
     /// This may be used to see if the owners on the multisig have changed
@@ -12,11 +14,16 @@ pub struct Multisig {
     /// [Transaction] approval to ensure that owners cannot approve old
     /// transactions.
     pub owner_set_seqno: u32,
-    /// Total number of [Transaction]s on this [Multisig]
-    pub transaction_count: u32,
-    pub nonce: u8,
     /// Bump seed for deriving PDA seeds
     pub bump: u8,
+}
+
+impl Multisig {
+    pub const SEED_PREFIX: &'static [u8] = b"multisig";
+
+    pub fn owner_index(&self, key: &Pubkey) -> Option<usize> {
+        self.owners.iter().position(|a| a == key)
+    }
 }
 
 #[account]
@@ -44,6 +51,8 @@ pub struct Transaction {
 }
 
 impl Transaction {
+    pub const SEED_PREFIX: &'static [u8] = b"transaction";
+
     /// Computes the space a [Transaction] uses.
     pub fn space(instructions: Vec<TxInstruction>) -> usize {
         8  // discriminator
@@ -53,7 +62,7 @@ impl Transaction {
     }
 
     /// Number of signatures
-    pub fn signatures_count(&self) -> usize {
+    pub fn sig_count(&self) -> usize {
         self.signers.iter().filter(|&did_sign| *did_sign).count()
     }
 }
