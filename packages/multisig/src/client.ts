@@ -1,6 +1,6 @@
 import { web3 } from '@project-serum/anchor'
 import type { Address, Program } from '@project-serum/anchor'
-import type { IDL } from './idl'
+import { IDL } from './idl'
 import type { Multisig, Transaction } from './interfaces'
 import { toBytesInt32 } from './utils'
 
@@ -8,6 +8,7 @@ const ID = new web3.PublicKey('4GUuiefBoY1Qeou69d2bM2mQTEgr8wBFes3KqZaFXZzn')
 
 export class MultisigClient {
   static programId = ID
+  static IDL = IDL
 
   constructor(private props: MultisigClientProps) {}
 
@@ -35,10 +36,16 @@ export class MultisigClient {
       key = kp.publicKey
     }
 
+    key = new web3.PublicKey(key)
+
     const [multisig] = await this.pda.multisig(key)
     const payer = this.wallet.publicKey
     const transaction = await this.program.methods
-      .createMultisig(key, props.owners, props.threshold)
+      .createMultisig(
+        key,
+        props.owners.map(o => new web3.PublicKey(o)),
+        props.threshold,
+      )
       .accounts({
         multisig,
         payer,
@@ -56,7 +63,7 @@ export class MultisigClient {
     return await this.program.account.multisig.fetchNullable(address) as unknown as Multisig
   }
 
-  async getMultisig(key: web3.PublicKey) {
+  async getMultisig(key: Address) {
     return await this.fetchMultisig((await this.pda.multisig(key))[0])
   }
 
@@ -238,9 +245,9 @@ interface MultisigClientProps {
 }
 
 interface CreateMultisigProps {
-  owners: web3.PublicKey[]
+  owners: Address[]
   threshold: number
-  key?: web3.PublicKey
+  key?: Address
 }
 
 interface CreateTransactionProps {

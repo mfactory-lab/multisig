@@ -1,1 +1,1 @@
-export * from './multisig'
+export { IDL } from './multisig'
