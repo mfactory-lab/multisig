@@ -25,7 +25,20 @@ importers:
       ts-mocha: 10.0.0_mocha@10.0.0
       typescript: 4.7.4
 
+  packages/cli:
+    specifiers:
+      '@multisig/sdk': '*'
+      commander: ^9.3.0
+      loglevel: ^1.8.0
+    dependencies:
+      '@multisig/sdk': link:../multisig
+      commander: 9.4.0
+      loglevel: 1.8.0
+
   packages/multisig:
+    specifiers: {}
+
+  packages/ui:
     specifiers: {}
 
 packages:
@@ -2755,6 +2768,11 @@ packages:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
     dev: false
 
+  /commander/9.4.0:
+    resolution: {integrity: sha512-sRPT+umqkz90UA8M1yqYfnHlZA7fF6nSphDtxeywPZ49ysjxDQybzk13CL+mXekDRG92skbcqCLVovuCusNmFw==}
+    engines: {node: ^12.20.0 || >=14}
+    dev: false
+
   /commondir/1.0.1:
     resolution: {integrity: sha512-W9pAhw0ja1Edb5GVdIF1mjZw/ASI0AlShXM83UUGe2DVr5TdAPEA1OA8m/g8zWp9x6On7gqufY+FatDbC3MDQg==}
     dev: false
@@ -4730,6 +4748,11 @@ packages:
       ansi-fragments: 0.2.1
       dayjs: 1.11.5
       yargs: 15.4.1
+    dev: false
+
+  /loglevel/1.8.0:
+    resolution: {integrity: sha512-G6A/nJLRgWOuuwdNuA6koovfEV1YpqqAG4pRUlFaz3jj2QNZ8M4vBqnVA+HBTmU/AMNUtlOsMmSpF6NyOjztbA==}
+    engines: {node: '>= 0.6.0'}
     dev: false
 
   /loose-envify/1.4.0:
