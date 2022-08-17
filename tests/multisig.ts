@@ -1,7 +1,7 @@
 import { AnchorProvider, Program, Wallet, web3 } from '@project-serum/anchor'
 import { assert } from 'chai'
+// noinspection ES6PreferShortImport
 import { MultisigClient } from '../packages/multisig/src'
-import { IDL } from '../packages/multisig/src/idl'
 
 const opts = AnchorProvider.defaultOptions()
 const provider = new AnchorProvider(
@@ -12,7 +12,7 @@ const provider = new AnchorProvider(
 
 describe('multisig', () => {
   const client = new MultisigClient({
-    program: new Program(IDL, MultisigClient.programId, provider),
+    program: new Program(MultisigClient.IDL, MultisigClient.programId, provider),
     wallet: provider.wallet,
   })
 
