@@ -1,7 +1,7 @@
 use crate::*;
 
 #[event]
-pub struct WalletCreatedEvent {
+pub struct MultisigCreatedEvent {
     #[index]
     pub multisig: Pubkey,
     pub owners: Vec<Pubkey>,

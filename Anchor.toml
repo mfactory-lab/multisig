@@ -14,10 +14,10 @@ wallet = "~/.config/solana/id.json"
 test = "npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
 [programs.mainnet]
-multisig = "6tbPiQLgTU4ySYWyZGXbnVSAEzLc1uF8t5kJPXXgBmRP"
+multisig = "4GUuiefBoY1Qeou69d2bM2mQTEgr8wBFes3KqZaFXZzn"
 
 [programs.devnet]
-multisig = "F3Uf5F61dmht1xuNNNkk3jnzj82TY56vVjVEhZALRkN"
+multisig = "4GUuiefBoY1Qeou69d2bM2mQTEgr8wBFes3KqZaFXZzn"
 
 [programs.localnet]
-multisig = "6tbPiQLgTU4ySYWyZGXbnVSAEzLc1uF8t5kJPXXgBmRP"
+multisig = "4GUuiefBoY1Qeou69d2bM2mQTEgr8wBFes3KqZaFXZzn"

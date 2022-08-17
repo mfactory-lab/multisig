@@ -4,9 +4,9 @@ mod state;
 use anchor_lang::{prelude::*, solana_program};
 use events::*;
 use state::*;
-use std::{convert::Into, ops::Deref};
+use std::convert::Into;
 
-declare_id!("6tbPiQLgTU4ySYWyZGXbnVSAEzLc1uF8t5kJPXXgBmRP");
+declare_id!("4GUuiefBoY1Qeou69d2bM2mQTEgr8wBFes3KqZaFXZzn");
 
 #[program]
 pub mod multisig {
@@ -16,6 +16,7 @@ pub mod multisig {
     /// a set of owners and a threshold.
     pub fn create_multisig(
         ctx: Context<CreateMultisig>,
+        key: Pubkey,
         owners: Vec<Pubkey>,
         threshold: u8,
     ) -> Result<()> {
@@ -25,12 +26,14 @@ pub mod multisig {
         assert_unique_owners(&owners)?;
 
         let multisig = &mut ctx.accounts.multisig;
+        multisig.key = key;
         multisig.owners = owners.clone();
         multisig.threshold = threshold;
-        multisig.bump = *ctx.bumps.get("multisig").unwrap();
+        multisig.transaction_count = 0;
         multisig.owner_set_seqno = 0;
+        multisig.bump = *ctx.bumps.get("multisig").unwrap();
 
-        emit!(WalletCreatedEvent {
+        emit!(MultisigCreatedEvent {
             multisig: multisig.key(),
             owners,
             threshold,
@@ -140,11 +143,10 @@ pub mod multisig {
 
         require!(tx.sig_count() >= multisig.threshold as usize, NotEnoughSigners);
 
-        let signer_seeds = &[multisig.key().as_ref(), &[multisig.nonce]];
-        let seeds = &[&signer_seeds[..]];
+        let seeds = &[Multisig::SEED_PREFIX, multisig.key.as_ref(), &[multisig.bump]];
 
         for ix in tx.instructions.iter() {
-            solana_program::program::invoke_signed(&ix.into(), ctx.remaining_accounts, seeds)?;
+            solana_program::program::invoke_signed(&ix.into(), ctx.remaining_accounts, &[seeds])?;
         }
 
         tx.executor = ctx.accounts.executor.key();
@@ -162,9 +164,22 @@ pub mod multisig {
 }
 
 #[derive(Accounts)]
+#[instruction(key: Pubkey, max_owners: u8)]
 pub struct CreateMultisig<'info> {
-    #[account(zero, signer)]
+    #[account(
+        init,
+        seeds = [
+            Multisig::SEED_PREFIX,
+            key.as_ref()
+        ],
+        bump,
+        payer = payer,
+        space = Multisig::space(max_owners),
+    )]
     multisig: Box<Account<'info, Multisig>>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -176,7 +191,7 @@ pub struct CreateTransaction<'info> {
         init,
         seeds = [
             Transaction::SEED_PREFIX,
-            multisig.key().to_bytes().as_ref(),
+            multisig.key().as_ref(),
             multisig.transaction_count.to_le_bytes().as_ref()
         ],
         bump,

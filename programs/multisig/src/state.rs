@@ -2,17 +2,15 @@ use anchor_lang::{prelude::*, solana_program::instruction::Instruction};
 
 #[account]
 pub struct Multisig {
+    /// Key used as id to derive
+    pub key: Pubkey,
     /// Owners of the [Multisig]
     pub owners: Vec<Pubkey>,
+    /// Minimum number of owner approvals needed to sign a [Transaction]
     pub threshold: u8,
     /// Total number of [Transaction]s on this [Multisig]
     pub transaction_count: u32,
-    /// Sequence of the ownership set
-    ///
-    /// This may be used to see if the owners on the multisig have changed
-    /// since the last time the owners were checked. This is used on
-    /// [Transaction] approval to ensure that owners cannot approve old
-    /// transactions.
+    /// Sequence of the ownership change
     pub owner_set_seqno: u32,
     /// Bump seed for deriving PDA seeds
     pub bump: u8,
@@ -20,6 +18,13 @@ pub struct Multisig {
 
 impl Multisig {
     pub const SEED_PREFIX: &'static [u8] = b"multisig";
+
+    pub fn space(max_owners: u8) -> usize {
+        8 // discriminator
+            + std::mem::size_of::<Multisig>()
+            + 4
+            + std::mem::size_of::<Pubkey>() * (max_owners as usize)
+    }
 
     pub fn owner_index(&self, key: &Pubkey) -> Option<usize> {
         self.owners.iter().position(|a| a == key)
