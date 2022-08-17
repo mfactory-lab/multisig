@@ -68,6 +68,7 @@ pub mod multisig {
         tx.index = multisig.transaction_count;
         tx.executed_at = None;
         tx.created_at = Clock::get()?.unix_timestamp;
+        tx.bump = *ctx.bumps.get("transaction").unwrap();
 
         multisig.transaction_count = multisig.transaction_count.saturating_add(1);
 
@@ -90,6 +91,9 @@ pub mod multisig {
             multisig.owner_index(ctx.accounts.owner.key).ok_or(ErrorCode::InvalidOwner)?;
 
         let tx = &mut ctx.accounts.transaction;
+
+        require!(!tx.signers[owner_index], AlreadyApproved);
+
         tx.signers[owner_index] = true;
 
         emit!(TransactionApprovedEvent {
@@ -144,10 +148,10 @@ pub mod multisig {
 
         require!(tx.sig_count() >= multisig.threshold as usize, NotEnoughSigners);
 
-        let seeds = &[Multisig::SEED_PREFIX, multisig.key.as_ref(), &[multisig.bump]];
+        let seeds = [Multisig::SEED_PREFIX, multisig.key.as_ref(), &[multisig.bump]];
 
         for ix in tx.instructions.iter() {
-            solana_program::program::invoke_signed(&ix.into(), ctx.remaining_accounts, &[seeds])?;
+            solana_program::program::invoke_signed(&ix.into(), ctx.remaining_accounts, &[&seeds])?;
         }
 
         tx.executor = ctx.accounts.executor.key();
@@ -165,7 +169,7 @@ pub mod multisig {
 }
 
 #[derive(Accounts)]
-#[instruction(key: Pubkey, max_owners: u8)]
+#[instruction(key: Pubkey, owners: Vec<Pubkey>)]
 pub struct CreateMultisig<'info> {
     #[account(
         init,
@@ -175,18 +179,22 @@ pub struct CreateMultisig<'info> {
         ],
         bump,
         payer = payer,
-        space = Multisig::space(max_owners),
+        space = Multisig::space(owners.len() as u8),
     )]
     multisig: Box<Account<'info, Multisig>>,
     #[account(mut)]
-    pub payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
+    payer: Signer<'info>,
+    system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 #[instruction(instructions: Vec<TxInstruction>)]
 pub struct CreateTransaction<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [Multisig::SEED_PREFIX, multisig.key.as_ref()],
+        bump = multisig.bump,
+    )]
     multisig: Box<Account<'info, Multisig>>,
     #[account(
         init,
@@ -196,14 +204,13 @@ pub struct CreateTransaction<'info> {
             multisig.transaction_count.to_le_bytes().as_ref()
         ],
         bump,
-        payer = payer,
+        payer = proposer,
         space = Transaction::space(instructions),
     )]
     transaction: Box<Account<'info, Transaction>>,
-    proposer: Signer<'info>,
     #[account(mut)]
-    pub payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
+    proposer: Signer<'info>,
+    system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -259,8 +266,10 @@ pub enum ErrorCode {
     UniqueOwners,
     #[msg("Not enough owners signed this transaction")]
     NotEnoughSigners,
-    #[msg("The given transaction has already been executed.")]
+    #[msg("The given transaction has already been executed")]
     AlreadyExecuted,
+    #[msg("The owner has already approved the transaction")]
+    AlreadyApproved,
     #[msg("Threshold must be less than or equal to the number of owners")]
     InvalidThreshold,
 }
