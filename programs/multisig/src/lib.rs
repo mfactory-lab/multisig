@@ -60,6 +60,7 @@ pub mod multisig {
 
         let tx = &mut ctx.accounts.transaction;
         tx.proposer = ctx.accounts.proposer.key();
+        tx.executor = Pubkey::default();
         tx.instructions = instructions.clone();
         tx.signers = signers;
         tx.multisig = multisig.key();
