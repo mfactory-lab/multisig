@@ -61,11 +61,6 @@ export type Multisig = {
         },
         {
           "name": "proposer",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "payer",
           "isMut": true,
           "isSigner": true
         },
@@ -586,11 +581,6 @@ export const IDL: Multisig = {
         },
         {
           "name": "proposer",
-          "isMut": false,
-          "isSigner": true
-        },
-        {
-          "name": "payer",
           "isMut": true,
           "isSigner": true
         },

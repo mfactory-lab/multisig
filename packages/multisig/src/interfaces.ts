@@ -5,7 +5,7 @@ export interface Multisig {
   owners: web3.PublicKey[]
   threshold: number
   transactionCount: number
-  ownerSetSeqNo: number
+  ownerSetSeqno: number
   bump: number
 }
 
@@ -16,7 +16,7 @@ export interface Transaction {
   instructions: web3.TransactionInstruction[]
   signers: boolean[]
   index: number
-  ownerSetSeqNo: number
+  ownerSetSeqno: number
   executedAt: BN
   createdAt: BN
   bump: number
