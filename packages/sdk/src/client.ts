@@ -108,24 +108,30 @@ export class MultisigClient {
 
   async findTransactions(props: FindTransactionsProps) {
     const filters = [
-      // by multisig
       { memcmp: { offset: 8, bytes: new web3.PublicKey(props.multisig).toBase58() } },
     ]
     if (props.index !== undefined) {
       filters.push({ memcmp: { offset: 8 + 32, bytes: bs58.encode(toBytesInt32(+props.index)) } })
     }
+    if (props.proposer !== undefined) {
+      filters.push({ memcmp: { offset: 8 + 32 + 4, bytes: new web3.PublicKey(props.proposer).toBase58() } })
+    }
+    if (props.executor !== undefined) {
+      filters.push({ memcmp: { offset: 8 + 32 + 4 + 32, bytes: new web3.PublicKey(props.executor).toBase58() } })
+    }
     return await this.program.account.transaction.all(filters)
   }
 
   async executeTransaction(props: ExecuteTransactionProps) {
-    const [key] = await this.pda.transaction(props.multisig, props.index)
-    const { instructions } = await this.program.account.transaction.fetch(key) as Transaction
+    const [transactionPda] = await this.pda.transaction(props.multisig, props.index)
+    const { instructions } = await this.program.account.transaction.fetch(transactionPda) as Transaction
+    const [signer] = await this.pda.signer(props.multisig)
 
     const transaction = await this.program.methods
       .executeTransaction()
       .accounts({
         multisig: props.multisig,
-        transaction: key,
+        transaction: transactionPda,
         executor: this.wallet.publicKey,
       })
       .remainingAccounts(instructions.flatMap(ix => [
@@ -135,7 +141,7 @@ export class MultisigClient {
           isWritable: false,
         },
         ...ix.keys.map((k) => {
-          return k.pubkey.toString() === props.multisig.toString() ? { ...k, isSigner: false } : k
+          return k.pubkey.toString() === signer.toString() ? { ...k, isSigner: false } : k
         }),
       ]))
       .transaction()
@@ -146,13 +152,13 @@ export class MultisigClient {
   }
 
   async approveTransaction(props: ApproveProps) {
-    const [key] = await this.pda.transaction(props.multisig, props.index)
+    const [transactionPda] = await this.pda.transaction(props.multisig, props.index)
 
     const transaction = await this.program.methods
       .approve()
       .accounts({
         multisig: props.multisig,
-        transaction: key,
+        transaction: transactionPda,
         owner: props.owner ?? this.wallet.publicKey,
       })
       .transaction()
@@ -167,11 +173,13 @@ export class MultisigClient {
       owners: props.owners,
     })
 
+    const [signer] = await this.pda.signer(props.multisig)
+
     const instruction = new web3.TransactionInstruction({
       programId: this.program.programId,
       keys: [
         {
-          pubkey: props.multisig,
+          pubkey: signer,
           isWritable: true,
           isSigner: true,
         },
@@ -193,12 +201,13 @@ export class MultisigClient {
     const data = this.program.coder.instruction.encode('change_threshold', {
       threshold: props.threshold,
     })
+    const [signer] = await this.pda.signer(props.multisig)
 
     const instruction = new web3.TransactionInstruction({
       programId: this.program.programId,
       keys: [
         {
-          pubkey: props.multisig,
+          pubkey: signer,
           isWritable: true,
           isSigner: true,
         },
@@ -222,6 +231,10 @@ const TRANSACTION_SEED_PREFIX = 'transaction'
 
 class MultisigPDA {
   constructor(private programId: web3.PublicKey) {}
+
+  signer = (multisig: Address) => this.pda([
+    new web3.PublicKey(multisig).toBuffer(),
+  ])
 
   multisig = (key: Address) => this.pda([
     Buffer.from(MULTISIG_SEED_PREFIX),
@@ -285,5 +298,7 @@ interface SetOwnersProps {
 
 interface FindTransactionsProps {
   multisig: Address
+  proposer?: Address
+  executor?: Address
   index?: number
 }
