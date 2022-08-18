@@ -33,6 +33,9 @@ pub mod multisig {
         multisig.owner_set_seqno = 0;
         multisig.bump = *ctx.bumps.get("multisig").unwrap();
 
+        let (_, signer_bump) = Pubkey::find_program_address(&[multisig.key().as_ref()], &crate::ID);
+        multisig.signer_bump = signer_bump;
+
         emit!(MultisigCreatedEvent {
             multisig: multisig.key(),
             owners,
@@ -146,7 +149,8 @@ pub mod multisig {
 
         require!(tx.sig_count() >= multisig.threshold as usize, NotEnoughSigners);
 
-        let seeds = [Multisig::SEED_PREFIX, multisig.key.as_ref(), &[multisig.bump]];
+        let key = &multisig.key();
+        let seeds = [key.as_ref(), &[multisig.signer_bump]];
 
         for ix in tx.instructions.iter() {
             solana_program::program::invoke_signed(&ix.into(), ctx.remaining_accounts, &[&seeds])?;
@@ -156,12 +160,17 @@ pub mod multisig {
         tx.executed_at = Some(Clock::get()?.unix_timestamp);
 
         emit!(TransactionExecutedEvent {
-            multisig: multisig.key(),
+            multisig: *key,
             transaction: tx.key(),
             executor: tx.executor,
             timestamp: tx.created_at
         });
 
+        Ok(())
+    }
+
+    /// Close the given transaction
+    pub fn close_transaction(_ctx: Context<CloseTransaction>) -> Result<()> {
         Ok(())
     }
 }
@@ -222,8 +231,13 @@ pub struct Approve<'info> {
 
 #[derive(Accounts)]
 pub struct Auth<'info> {
-    #[account(mut, signer)]
+    #[account(mut)]
     multisig: Box<Account<'info, Multisig>>,
+    #[account(
+        seeds = [multisig.key().as_ref()],
+        bump = multisig.signer_bump,
+    )]
+    multisig_signer: Signer<'info>,
 }
 
 #[derive(Accounts)]
@@ -233,6 +247,15 @@ pub struct ExecuteTransaction<'info> {
     #[account(mut, has_one = multisig)]
     transaction: Box<Account<'info, Transaction>>,
     executor: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct CloseTransaction<'info> {
+    #[account(constraint = multisig.owner_index(owner.key).is_some() @ ErrorCode::InvalidOwner)]
+    multisig: Box<Account<'info, Multisig>>,
+    #[account(mut, has_one = multisig, close = owner)]
+    transaction: Box<Account<'info, Transaction>>,
+    owner: Signer<'info>,
 }
 
 fn assert_unique_owners(keys: &[Pubkey]) -> Result<()> {

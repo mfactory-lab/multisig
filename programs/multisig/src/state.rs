@@ -14,6 +14,8 @@ pub struct Multisig {
     pub owner_set_seqno: u32,
     /// Bump seed for deriving PDA seeds
     pub bump: u8,
+    /// Signer bump seed for deriving PDA seeds
+    pub signer_bump: u8,
 }
 
 impl Multisig {
