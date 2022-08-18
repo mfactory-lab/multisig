@@ -10,7 +10,6 @@ program = multisig
 
 # get program id by name
 program_id = $(shell sed -n 's/^ *${program}.*=.*"\([^"]*\)".*/\1/p' Anchor.toml | head -1)
-idl_path = $(cwd)/packages/$(program)/src/idl
 
 .DEFAULT_GOAL: help
 
@@ -22,7 +21,7 @@ help: ## Show this help
 
 .PHONY: build
 build: ## Build program
-	anchor build -p $(program) -t $(idl_path)
+	anchor build -p $(program) -t $(cwd)/packages/sdk/src/idl
 
 .PHONY: deploy
 deploy: build ## Deploy program
