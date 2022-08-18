@@ -1,5 +1,5 @@
 export type Multisig = {
-  "version": "0.0.2",
+  "version": "0.0.3",
   "name": "multisig",
   "instructions": [
     {
@@ -115,6 +115,11 @@ export type Multisig = {
         {
           "name": "multisig",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "multisigSigner",
+          "isMut": false,
           "isSigner": true
         }
       ],
@@ -138,6 +143,11 @@ export type Multisig = {
         {
           "name": "multisig",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "multisigSigner",
+          "isMut": false,
           "isSigner": true
         }
       ],
@@ -166,6 +176,30 @@ export type Multisig = {
         },
         {
           "name": "executor",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeTransaction",
+      "docs": [
+        "Close the given transaction"
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
           "isMut": false,
           "isSigner": true
         }
@@ -222,6 +256,13 @@ export type Multisig = {
               "Bump seed for deriving PDA seeds"
             ],
             "type": "u8"
+          },
+          {
+            "name": "signerBump",
+            "docs": [
+              "Signer bump seed for deriving PDA seeds"
+            ],
+            "type": "u8"
           }
         ]
       }
@@ -255,7 +296,7 @@ export type Multisig = {
           {
             "name": "executor",
             "docs": [
-              "The account that executed the [Transaction]"
+              "The account that executed the transaction"
             ],
             "type": "publicKey"
           },
@@ -316,9 +357,6 @@ export type Multisig = {
   "types": [
     {
       "name": "TxInstruction",
-      "docs": [
-        "Instruction."
-      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -524,7 +562,7 @@ export type Multisig = {
 };
 
 export const IDL: Multisig = {
-  "version": "0.0.2",
+  "version": "0.0.3",
   "name": "multisig",
   "instructions": [
     {
@@ -640,6 +678,11 @@ export const IDL: Multisig = {
         {
           "name": "multisig",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "multisigSigner",
+          "isMut": false,
           "isSigner": true
         }
       ],
@@ -663,6 +706,11 @@ export const IDL: Multisig = {
         {
           "name": "multisig",
           "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "multisigSigner",
+          "isMut": false,
           "isSigner": true
         }
       ],
@@ -691,6 +739,30 @@ export const IDL: Multisig = {
         },
         {
           "name": "executor",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "closeTransaction",
+      "docs": [
+        "Close the given transaction"
+      ],
+      "accounts": [
+        {
+          "name": "multisig",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "owner",
           "isMut": false,
           "isSigner": true
         }
@@ -747,6 +819,13 @@ export const IDL: Multisig = {
               "Bump seed for deriving PDA seeds"
             ],
             "type": "u8"
+          },
+          {
+            "name": "signerBump",
+            "docs": [
+              "Signer bump seed for deriving PDA seeds"
+            ],
+            "type": "u8"
           }
         ]
       }
@@ -780,7 +859,7 @@ export const IDL: Multisig = {
           {
             "name": "executor",
             "docs": [
-              "The account that executed the [Transaction]"
+              "The account that executed the transaction"
             ],
             "type": "publicKey"
           },
@@ -841,9 +920,6 @@ export const IDL: Multisig = {
   "types": [
     {
       "name": "TxInstruction",
-      "docs": [
-        "Instruction."
-      ],
       "type": {
         "kind": "struct",
         "fields": [
