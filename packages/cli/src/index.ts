@@ -8,6 +8,10 @@ import { MultisigClient } from '@multisig/sdk'
 import { version } from '../package.json'
 import { clusterUrl } from './utils'
 
+export const BPF_UPGRADE_LOADER_ID = new web3.PublicKey(
+  'BPFLoaderUpgradeab1e11111111111111111111111',
+)
+
 log.setLevel('info')
 
 cli
@@ -111,6 +115,93 @@ cli.command('create-transaction')
       console.log(e)
     }
   })
+
+cli.command('transactions')
+  .requiredOption('-m, --multisig <key>', 'Multisig derived key')
+  .requiredOption('-i, --index <numbder>', 'Transaction index')
+  .action(async (opts: any) => {
+    const [multisig] = await client.pda.multisig(opts.multisig)
+    const transactions = await client.findTransactions({ multisig, index: opts.index })
+    log.info(JSON.stringify(transactions, null, 2))
+  })
+
+cli.command('test')
+  .requiredOption('-m, --multisig <key>', 'Multisig derived key')
+  .action(async (opts: any) => {
+    const [multisigKey] = await client.pda.multisig(opts.multisig)
+
+    const instruction = web3.SystemProgram.transfer({
+      fromPubkey: multisigKey,
+      toPubkey: new web3.PublicKey('8sefnFBiNpsbZijpuf6S2TFb3wT5d2o2o3uPFpGrMLGE'),
+      lamports: 1,
+    })
+
+    const { transaction, key } = await client.createTransaction({
+      multisig: multisigKey,
+      instructions: [instruction],
+      index: opts.index ?? null,
+    })
+
+    try {
+      const sig = await provider.sendAndConfirm(transaction)
+      log.info(`Tx: ${key.toBase58()}`)
+      log.info(`Signature: ${sig}`)
+      log.info('OK')
+    } catch (e) {
+      log.info('Error')
+      console.log(e)
+    }
+  })
+
+// cli.command('upgrade-program')
+//   .argument('<key>', 'Program id')
+//   .requiredOption('-m, --multisig <key>', 'Multisig derived key')
+//   .action(async (programId, opts: any) => {
+//     const programAccount = await provider.connection.getAccountInfo(new web3.PublicKey(programId))
+//     if (programAccount === null) {
+//       throw new Error('Invalid program ID')
+//     }
+//
+//     const bufferAddr = new web3.PublicKey(0)
+//     const programDataAddr = new web3.PublicKey(programAccount.data.slice(4))
+//     const [multisigKey] = await client.pda.multisig(opts.multisig)
+//
+//     console.log(programDataAddr.toBase58())
+//
+//     // const instructions = [new web3.TransactionInstruction({
+//     //   programId: BPF_UPGRADE_LOADER_ID,
+//     //   keys: [
+//     //     {
+//     //       pubkey: programDataAddr,
+//     //       isWritable: true,
+//     //       isSigner: false,
+//     //     },
+//     //     { pubkey: programId, isWritable: true, isSigner: false },
+//     //     { pubkey: bufferAddr, isWritable: true, isSigner: false },
+//     //     { pubkey: client.wallet.publicKey, isWritable: true, isSigner: false },
+//     //     { pubkey: web3.SYSVAR_RENT_PUBKEY, isWritable: false, isSigner: false },
+//     //     { pubkey: web3.SYSVAR_CLOCK_PUBKEY, isWritable: false, isSigner: false },
+//     //     { pubkey: multisigKey, isWritable: false, isSigner: false },
+//     //   ],
+//     //   data: Buffer.from([3, 0, 0, 0]),
+//     // })]
+//     //
+//     // const { transaction, key } = await client.createTransaction({
+//     //   multisig: multisigKey,
+//     //   instructions,
+//     //   index: opts.index ?? null,
+//     // })
+//     //
+//     // try {
+//     //   const sig = await provider.sendAndConfirm(transaction)
+//     //   log.info(`Tx: ${key.toBase58()}`)
+//     //   log.info(`Signature: ${sig}`)
+//     //   log.info('OK')
+//     // } catch (e) {
+//     //   log.info('Error')
+//     //   console.log(e)
+//     // }
+//   })
 
 cli.command('delete-transaction')
   .argument('<index>', 'Transaction index')
