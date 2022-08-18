@@ -22,7 +22,7 @@ describe('multisig', () => {
   const ownerD = web3.Keypair.generate()
   const owners = [client.wallet.publicKey, ownerA.publicKey, ownerB.publicKey, ownerC.publicKey]
 
-  let multisigKey: web3.PublicKey
+  let multisigAddr: web3.PublicKey
 
   before(async () => {
     await provider.connection.confirmTransaction(
@@ -35,9 +35,9 @@ describe('multisig', () => {
     const { transaction, key } = await client.createMultisig({ owners, threshold })
     await provider.sendAndConfirm(transaction)
 
-    multisigKey = (await client.pda.multisig(key))[0]
+    multisigAddr = (await client.pda.multisig(key))[0]
 
-    const multisig = await client.fetchMultisig(multisigKey)
+    const multisig = await client.fetchMultisig(multisigAddr)
     if (!multisig) {
       throw new Error('Invalid multisig')
     }
@@ -53,12 +53,21 @@ describe('multisig', () => {
       owners: newOwners,
     })
 
+    const [signer] = await client.pda.signer(multisigAddr)
+
     const index = 0
-    const instruction = new web3.TransactionInstruction({
+
+    // change multisig owners
+    const ix1 = new web3.TransactionInstruction({
       programId: client.program.programId,
       keys: [
         {
-          pubkey: multisigKey,
+          pubkey: multisigAddr,
+          isWritable: true,
+          isSigner: false,
+        },
+        {
+          pubkey: signer,
           isWritable: true,
           isSigner: true,
         },
@@ -66,9 +75,19 @@ describe('multisig', () => {
       data,
     } as any)
 
+    // transfer some SOL from multisig account
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(signer, 10 * web3.LAMPORTS_PER_SOL),
+    )
+    const ix2 = web3.SystemProgram.transfer({
+      fromPubkey: signer,
+      toPubkey: new web3.PublicKey(multisigAddr),
+      lamports: web3.LAMPORTS_PER_SOL,
+    })
+
     const { transaction } = await client.createTransaction({
-      multisig: multisigKey,
-      instructions: [instruction],
+      multisig: multisigAddr,
+      instructions: [ix1, ix2],
       index,
     })
 
@@ -79,14 +98,14 @@ describe('multisig', () => {
       throw e
     }
 
-    const tx = await client.getTransaction(multisigKey, index)
+    const tx = await client.getTransaction(multisigAddr, index)
     if (!tx) {
       throw new Error('Invalid transaction')
     }
 
     assert.equal(tx.index, 0)
     assert.equal(tx.proposer.toBase58(), client.wallet.publicKey.toBase58())
-    assert.deepEqual(tx.instructions, [instruction])
+    assert.deepEqual(tx.instructions, [ix1, ix2])
     assert.equal(tx.signers.length, owners.length)
     assert.equal(tx.signers[0], true)
   })
@@ -94,7 +113,7 @@ describe('multisig', () => {
   it('can not execute unapproved transaction', async () => {
     const index = 0
     const { transaction } = await client.executeTransaction({
-      multisig: multisigKey,
+      multisig: multisigAddr,
       index,
     })
     try {
@@ -107,7 +126,7 @@ describe('multisig', () => {
 
   it('can approve transaction', async () => {
     const { transaction } = await client.approveTransaction({
-      multisig: multisigKey,
+      multisig: multisigAddr,
       owner: ownerA.publicKey,
       index: 0,
     })
@@ -118,7 +137,7 @@ describe('multisig', () => {
       throw e
     }
 
-    const tx = await client.getTransaction(multisigKey, 0)
+    const tx = await client.getTransaction(multisigAddr, 0)
     if (!tx) {
       throw new Error('Invalid transaction')
     }
@@ -130,7 +149,7 @@ describe('multisig', () => {
     const index = 0
 
     const { transaction } = await client.executeTransaction({
-      multisig: multisigKey,
+      multisig: multisigAddr,
       index,
     })
 
@@ -138,9 +157,10 @@ describe('multisig', () => {
       await provider.sendAndConfirm(transaction)
     } catch (e: any) {
       console.log(e)
+      assert.ok(false)
     }
 
-    const tx = await client.getTransaction(multisigKey, index)
+    const tx = await client.getTransaction(multisigAddr, index)
     if (!tx) {
       throw new Error('Invalid transaction')
     }
@@ -148,7 +168,7 @@ describe('multisig', () => {
     assert.equal(tx.executor.toBase58(), client.wallet.publicKey.toBase58())
     assert.ok(tx.executedAt !== null)
 
-    const multisig = await client.fetchMultisig(multisigKey)
+    const multisig = await client.fetchMultisig(multisigAddr)
     if (!multisig) {
       throw new Error('Invalid multisig')
     }
@@ -161,7 +181,7 @@ describe('multisig', () => {
   it('can not change threshold off-chain', async () => {
     const transaction = await client.program.methods
       .changeThreshold(3)
-      .accounts({ multisig: multisigKey })
+      .accounts({ multisig: multisigAddr })
       .transaction()
 
     try {
@@ -175,7 +195,7 @@ describe('multisig', () => {
   it('can not set owners off-chain', async () => {
     const transaction = await client.program.methods
       .setOwners([ownerA.publicKey, ownerB.publicKey])
-      .accounts({ multisig: multisigKey })
+      .accounts({ multisig: multisigAddr })
       .transaction()
 
     try {
