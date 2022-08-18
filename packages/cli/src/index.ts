@@ -34,8 +34,9 @@ cli
 
 const opts = cli.opts()
 
+const cluster = opts.env
 const anchorOpts = AnchorProvider.defaultOptions()
-const connection = new web3.Connection(clusterUrl(opts.env), anchorOpts.commitment)
+const connection = new web3.Connection(clusterUrl(cluster), anchorOpts.commitment)
 const payer = Keypair.fromSecretKey(Buffer.from(JSON.parse(fs.readFileSync(opts.keypair).toString())))
 const provider = new AnchorProvider(connection, new Wallet(payer), anchorOpts)
 
@@ -58,10 +59,15 @@ cli.command('create-multisig')
       threshold: Number(opts.threshold),
       key: opts.key ?? null,
     })
+
+    const [multisigKey] = await client.pda.multisig(key)
+    const [signer] = await client.pda.signer(multisigKey)
+
     try {
-      const sig = await provider.sendAndConfirm(transaction)
-      log.info(`Key: ${key.toBase58()}`)
-      log.info(`Signature: ${sig}`)
+      await provider.sendAndConfirm(transaction)
+      log.info(`Multisig Key: ${key.toBase58()}`)
+      log.info(`Multisig Address: ${multisigKey.toBase58()}`)
+      log.info(`Signer Address: ${signer.toBase58()}`)
       log.info('OK')
     } catch (e) {
       log.info('Error')
@@ -136,7 +142,7 @@ cli.command('tx')
     tx.feePayer = client.wallet.publicKey
     tx.add(...transaction.instructions)
 
-    const { base64, url } = inspectTransaction(tx)
+    const { base64, url } = inspectTransaction(tx, cluster)
 
     log.info('Encoded Transaction Message:')
     log.info('')
@@ -150,39 +156,29 @@ cli.command('test')
   .requiredOption('-m, --multisig <key>', 'Multisig key')
   .action(async (opts: any) => {
     const [multisigKey] = await client.pda.multisig(opts.multisig)
+    const [signer] = await client.pda.signer(multisigKey)
 
     const instruction = web3.SystemProgram.transfer({
-      fromPubkey: multisigKey,
+      fromPubkey: signer,
       toPubkey: new web3.PublicKey('8sefnFBiNpsbZijpuf6S2TFb3wT5d2o2o3uPFpGrMLGE'),
       lamports: web3.LAMPORTS_PER_SOL,
     })
 
-    const tx = new web3.Transaction()
-    tx.add(instruction)
-    tx.feePayer = client.wallet.publicKey
-    tx.recentBlockhash = (await provider.connection.getLatestBlockhash()).blockhash
-    // tx = await client.wallet.signTransaction(tx)
-    const rawTx = tx.serialize({ verifySignatures: false })
+    const { transaction, key } = await client.createTransaction({
+      multisig: multisigKey,
+      instructions: [instruction],
+      index: opts.index ?? null,
+    })
 
-    console.log(rawTx.toString('base64'))
-
-    // const { transaction, key } = await client.createTransaction({
-    //   multisig: multisigKey,
-    //   instructions: [instruction],
-    //   index: opts.index ?? null,
-    // })
-    //
-    // new web3.Transaction().add(instruction).serializeMessage()
-    //
-    // try {
-    //   const sig = await provider.sendAndConfirm(transaction)
-    //   log.info(`Tx: ${key.toBase58()}`)
-    //   log.info(`Signature: ${sig}`)
-    //   log.info('OK')
-    // } catch (e) {
-    //   log.info('Error')
-    //   console.log(e)
-    // }
+    try {
+      const sig = await provider.sendAndConfirm(transaction)
+      log.info(`Tx: ${key.toBase58()}`)
+      log.info(`Signature: ${sig}`)
+      log.info('OK')
+    } catch (e) {
+      log.info('Error')
+      console.log(e)
+    }
   })
 
 // cli.command('upgrade-program')
