@@ -1,5 +1,6 @@
 import { web3 } from '@project-serum/anchor'
 import type { Address, Program } from '@project-serum/anchor'
+import * as bs58 from 'bs58'
 import { IDL } from './idl'
 import type { Multisig, Transaction } from './interfaces'
 import { toBytesInt32 } from './utils'
@@ -106,9 +107,14 @@ export class MultisigClient {
   }
 
   async findTransactions(props: FindTransactionsProps) {
-    return await this.program.account.transaction.all([
-      { memcmp: { offset: 8, bytes: String(props.multisig) } },
-    ])
+    const filters = [
+      // by multisig
+      { memcmp: { offset: 8, bytes: new web3.PublicKey(props.multisig).toBase58() } },
+    ]
+    if (props.index !== undefined) {
+      filters.push({ memcmp: { offset: 8 + 32, bytes: bs58.encode(toBytesInt32(+props.index)) } })
+    }
+    return await this.program.account.transaction.all(filters)
   }
 
   async executeTransaction(props: ExecuteTransactionProps) {
@@ -279,4 +285,5 @@ interface SetOwnersProps {
 
 interface FindTransactionsProps {
   multisig: Address
+  index?: number
 }
