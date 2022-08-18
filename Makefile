@@ -1,16 +1,16 @@
 #!/usr/bin/make
 
 cwd = $(shell pwd)
-#cluster = "https://jpoolone.genesysgo.net"
-#cluster = "https://solana-api.projectserum.com"
-#cluster = "https://mainnet.rpcpool.com"
-#cluster = "mainnet"
-cluster = "devnet"
-program = "multisig"
+#cluster = https://jpoolone.genesysgo.net
+#cluster = https://solana-api.projectserum.com
+#cluster = https://mainnet.rpcpool.com
+#cluster = mainnet
+cluster = devnet
+program = multisig
 
 # get program id by name
 program_id = $(shell sed -n 's/^ *${program}.*=.*"\([^"]*\)".*/\1/p' Anchor.toml | head -1)
-idl_path = "$(cwd)/packages/$(program)/src/idl"
+idl_path = $(cwd)/packages/$(program)/src/idl
 
 .DEFAULT_GOAL: help
 

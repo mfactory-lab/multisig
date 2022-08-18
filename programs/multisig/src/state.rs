@@ -39,7 +39,7 @@ pub struct Transaction {
     pub index: u32,
     /// The proposer of the transaction
     pub proposer: Pubkey,
-    /// The account that executed the [Transaction]
+    /// The account that executed the transaction
     pub executor: Pubkey,
     /// List of instructions
     pub instructions: Vec<TxInstruction>,
@@ -58,7 +58,6 @@ pub struct Transaction {
 impl Transaction {
     pub const SEED_PREFIX: &'static [u8] = b"transaction";
 
-    /// Computes the space a [Transaction] uses.
     pub fn space(instructions: Vec<TxInstruction>) -> usize {
         8  // discriminator
             + std::mem::size_of::<Transaction>()
@@ -66,13 +65,12 @@ impl Transaction {
             + (instructions.iter().map(|ix| ix.space()).sum::<usize>())
     }
 
-    /// Number of signatures
+    /// Number of approvals
     pub fn sig_count(&self) -> usize {
         self.signers.iter().filter(|&did_sign| *did_sign).count()
     }
 }
 
-/// Instruction.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TxInstruction {
     /// Target program to execute this instruction
@@ -84,7 +82,6 @@ pub struct TxInstruction {
 }
 
 impl TxInstruction {
-    /// Space that a [TxInstruction] takes up.
     pub fn space(&self) -> usize {
         std::mem::size_of::<Pubkey>()
             + (self.keys.len() as usize) * std::mem::size_of::<TxAccountMeta>()

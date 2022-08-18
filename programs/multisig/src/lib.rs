@@ -140,9 +140,7 @@ pub mod multisig {
     pub fn execute_transaction(ctx: Context<ExecuteTransaction>) -> Result<()> {
         let tx = &mut ctx.accounts.transaction;
 
-        if tx.executed_at.is_some() {
-            return Err(ErrorCode::AlreadyExecuted.into());
-        }
+        require!(tx.executed_at.is_none(), AlreadyExecuted);
 
         let multisig = &mut ctx.accounts.multisig;
 
