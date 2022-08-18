@@ -31,11 +31,11 @@ importers:
       commander: ^9.3.0
       loglevel: ^1.8.0
     dependencies:
-      '@multisig/sdk': link:../multisig
+      '@multisig/sdk': link:../sdk
       commander: 9.4.0
       loglevel: 1.8.0
 
-  packages/multisig:
+  packages/sdk:
     specifiers: {}
 
   packages/ui:
