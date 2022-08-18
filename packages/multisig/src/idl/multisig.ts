@@ -1,5 +1,5 @@
 export type Multisig = {
-  "version": "0.0.1",
+  "version": "0.0.2",
   "name": "multisig",
   "instructions": [
     {
@@ -508,10 +508,15 @@ export type Multisig = {
     {
       "code": 6004,
       "name": "AlreadyExecuted",
-      "msg": "The given transaction has already been executed."
+      "msg": "The given transaction has already been executed"
     },
     {
       "code": 6005,
+      "name": "AlreadyApproved",
+      "msg": "The owner has already approved the transaction"
+    },
+    {
+      "code": 6006,
       "name": "InvalidThreshold",
       "msg": "Threshold must be less than or equal to the number of owners"
     }
@@ -519,7 +524,7 @@ export type Multisig = {
 };
 
 export const IDL: Multisig = {
-  "version": "0.0.1",
+  "version": "0.0.2",
   "name": "multisig",
   "instructions": [
     {
@@ -1028,10 +1033,15 @@ export const IDL: Multisig = {
     {
       "code": 6004,
       "name": "AlreadyExecuted",
-      "msg": "The given transaction has already been executed."
+      "msg": "The given transaction has already been executed"
     },
     {
       "code": 6005,
+      "name": "AlreadyApproved",
+      "msg": "The owner has already approved the transaction"
+    },
+    {
+      "code": 6006,
       "name": "InvalidThreshold",
       "msg": "Threshold must be less than or equal to the number of owners"
     }

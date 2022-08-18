@@ -71,7 +71,7 @@ export class MultisigClient {
     const accounts = await this.program.account.multisig.all([
       // TODO: optimize
     ])
-    return accounts.filter(a => a.account.owners.includes(owner))
+    return accounts.filter(a => [...a.account.owners].some(o => o.toBase58() === owner.toBase58()))
   }
 
   async createTransaction(props: CreateTransactionProps) {
