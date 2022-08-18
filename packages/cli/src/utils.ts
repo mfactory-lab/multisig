@@ -1,5 +1,5 @@
-import { clusterApiUrl } from '@solana/web3.js'
-import type { Cluster } from '@solana/web3.js'
+import { PublicKey, clusterApiUrl } from '@solana/web3.js'
+import type { Cluster, Transaction } from '@solana/web3.js'
 
 export const clusterUrl = (c: Cluster) => {
   switch (c) {
@@ -11,4 +11,18 @@ export const clusterUrl = (c: Cluster) => {
       return 'https://solana-api.syndica.io/access-token/Ay411Gnu2mddZxXvj594Dvlt4LHLhWCGCtXueiPr9OJy6IAGBY1X9D1wYndnozXb/rpc'
   }
   return clusterApiUrl(c)
+}
+
+/**
+ * Generates a link for inspecting the contents
+ */
+export function inspectTransaction(tx: Transaction, cluster: Cluster = 'mainnet-beta') {
+  tx.recentBlockhash = PublicKey.default.toString()
+  const base64 = tx.serializeMessage().toString('base64')
+  return {
+    base64,
+    url: `https://explorer.solana.com/tx/inspector?cluster=${cluster}&message=${encodeURIComponent(
+      base64,
+    )}`,
+  }
 }

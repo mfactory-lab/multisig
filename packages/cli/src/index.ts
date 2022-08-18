@@ -6,7 +6,7 @@ import { AnchorProvider, Program, Wallet, web3 } from '@project-serum/anchor'
 import { Keypair } from '@solana/web3.js'
 import { MultisigClient } from '@multisig/sdk'
 import { version } from '../package.json'
-import { clusterUrl } from './utils'
+import { clusterUrl, inspectTransaction } from './utils'
 
 export const BPF_UPGRADE_LOADER_ID = new web3.PublicKey(
   'BPFLoaderUpgradeab1e11111111111111111111111',
@@ -48,7 +48,7 @@ cli.command('create-multisig')
   .description('Create new multisig')
   .requiredOption('--keys <keys>', 'Owner keys (separated by comma)')
   .requiredOption('-t, --threshold <number>', 'Minimum number of owner approvals needed to sign a transaction')
-  .option('-k, --key <base58>', 'Multisig derived key (default auto-generated)')
+  .option('-k, --key <base58>', 'Multisig key (default auto-generated)')
   .action(async (opts: any) => {
     const owners = new Set(opts.keys.split(','))
     owners.add(client.wallet.publicKey.toBase58())
@@ -70,7 +70,7 @@ cli.command('create-multisig')
   })
 
 cli.command('show-multisig')
-  .argument('<key>', 'Multisig derived key')
+  .argument('<key>', 'Multisig key')
   .action(async (key: string) => {
     const multisig = await client.getMultisig(key)
     console.log(JSON.stringify(multisig, null, 2))
@@ -84,14 +84,14 @@ cli.command('show-owned-multisig')
   })
 
 cli.command('delete-multisig')
-  .argument('<key>', 'Multisig derived key')
+  .argument('<key>', 'Multisig key')
   .action(() => {
     log.info('Unimplemented')
   })
 
 cli.command('create-transaction')
   .argument('<file>', 'Instructions file')
-  .requiredOption('-m, --multisig <key>', 'Multisig derived key')
+  .requiredOption('-m, --multisig <key>', 'Multisig key')
   .option('-i, --index <number>', 'Custom transaction index')
   .action(async (file, opts: any) => {
     const [multisigKey] = await client.pda.multisig(opts.multisig)
@@ -117,7 +117,7 @@ cli.command('create-transaction')
   })
 
 cli.command('transactions')
-  .requiredOption('-m, --multisig <key>', 'Multisig derived key')
+  .requiredOption('-m, --multisig <key>', 'Multisig key')
   .requiredOption('-i, --index <numbder>', 'Transaction index')
   .action(async (opts: any) => {
     const [multisig] = await client.pda.multisig(opts.multisig)
@@ -125,37 +125,69 @@ cli.command('transactions')
     log.info(JSON.stringify(transactions, null, 2))
   })
 
+cli.command('tx')
+  .argument('<index>', 'Transaction index')
+  .requiredOption('-m, --multisig <key>', 'Multisig key')
+  .action(async (index: number, opts: any) => {
+    const [multisig] = await client.pda.multisig(opts.multisig)
+    const transaction = await client.getTransaction(multisig, index)
+
+    const tx = new web3.Transaction()
+    tx.feePayer = client.wallet.publicKey
+    tx.add(...transaction.instructions)
+
+    const { base64, url } = inspectTransaction(tx)
+
+    log.info('Encoded Transaction Message:')
+    log.info('')
+    log.info('Encoded Transaction Message:')
+    log.info(`${base64}\n`)
+    log.info('Inspection Link:')
+    log.info(url)
+  })
+
 cli.command('test')
-  .requiredOption('-m, --multisig <key>', 'Multisig derived key')
+  .requiredOption('-m, --multisig <key>', 'Multisig key')
   .action(async (opts: any) => {
     const [multisigKey] = await client.pda.multisig(opts.multisig)
 
     const instruction = web3.SystemProgram.transfer({
       fromPubkey: multisigKey,
       toPubkey: new web3.PublicKey('8sefnFBiNpsbZijpuf6S2TFb3wT5d2o2o3uPFpGrMLGE'),
-      lamports: 1,
+      lamports: web3.LAMPORTS_PER_SOL,
     })
 
-    const { transaction, key } = await client.createTransaction({
-      multisig: multisigKey,
-      instructions: [instruction],
-      index: opts.index ?? null,
-    })
+    const tx = new web3.Transaction()
+    tx.add(instruction)
+    tx.feePayer = client.wallet.publicKey
+    tx.recentBlockhash = (await provider.connection.getLatestBlockhash()).blockhash
+    // tx = await client.wallet.signTransaction(tx)
+    const rawTx = tx.serialize({ verifySignatures: false })
 
-    try {
-      const sig = await provider.sendAndConfirm(transaction)
-      log.info(`Tx: ${key.toBase58()}`)
-      log.info(`Signature: ${sig}`)
-      log.info('OK')
-    } catch (e) {
-      log.info('Error')
-      console.log(e)
-    }
+    console.log(rawTx.toString('base64'))
+
+    // const { transaction, key } = await client.createTransaction({
+    //   multisig: multisigKey,
+    //   instructions: [instruction],
+    //   index: opts.index ?? null,
+    // })
+    //
+    // new web3.Transaction().add(instruction).serializeMessage()
+    //
+    // try {
+    //   const sig = await provider.sendAndConfirm(transaction)
+    //   log.info(`Tx: ${key.toBase58()}`)
+    //   log.info(`Signature: ${sig}`)
+    //   log.info('OK')
+    // } catch (e) {
+    //   log.info('Error')
+    //   console.log(e)
+    // }
   })
 
 // cli.command('upgrade-program')
 //   .argument('<key>', 'Program id')
-//   .requiredOption('-m, --multisig <key>', 'Multisig derived key')
+//   .requiredOption('-m, --multisig <key>', 'Multisig key')
 //   .action(async (programId, opts: any) => {
 //     const programAccount = await provider.connection.getAccountInfo(new web3.PublicKey(programId))
 //     if (programAccount === null) {
@@ -205,7 +237,7 @@ cli.command('test')
 
 cli.command('delete-transaction')
   .argument('<index>', 'Transaction index')
-  .requiredOption('-m, --multisig <key>', 'Multisig derived key')
+  .requiredOption('-m, --multisig <key>', 'Multisig key')
   .action(() => {
     log.info('Unimplemented')
   })
