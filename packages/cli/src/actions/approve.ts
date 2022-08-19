@@ -1,7 +1,8 @@
 import log from 'loglevel'
-import type { CmdContext } from './index'
+import { useContext } from '../context'
 
-export async function approveTransactionCmd({ provider, client, opts }: CmdContext) {
+export async function approveTransactionAction(opts: any) {
+  const { provider, client } = useContext()
   const [multisigKey] = await client.pda.multisig(opts.multisig)
 
   const { transaction } = await client.approveTransaction({
@@ -19,7 +20,8 @@ export async function approveTransactionCmd({ provider, client, opts }: CmdConte
   }
 }
 
-export async function approveAllTransactionsCmd({ provider, client, opts }: CmdContext) {
+export async function approveAllTransactionsAction(opts: any) {
+  const { provider, client } = useContext()
   const [multisig] = await client.pda.multisig(opts.multisig)
   const transactions = await client.findTransactions({ multisig })
 

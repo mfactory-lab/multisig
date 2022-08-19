@@ -1,8 +1,9 @@
 import { web3 } from '@project-serum/anchor'
 import log from 'loglevel'
-import type { CmdContext } from './index'
+import { useContext } from '../context'
 
-export async function createMultisigCmd({ provider, client, opts }: CmdContext) {
+export async function createMultisigAction(opts: any) {
+  const { provider, client } = useContext()
   const owners = new Set(opts.keys.split(','))
 
   owners.add(client.wallet.publicKey.toBase58())

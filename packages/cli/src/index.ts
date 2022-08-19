@@ -1,132 +1,109 @@
-import { Buffer } from 'buffer'
-import * as fs from 'fs'
+import type { Command } from 'commander'
 import { program as cli } from 'commander'
 import log from 'loglevel'
-import { AnchorProvider, Program, Wallet, web3 } from '@project-serum/anchor'
-import { Keypair } from '@solana/web3.js'
-import { MultisigClient } from '@multisig/sdk'
 import { version } from '../package.json'
-import { clusterUrl } from './utils'
-import {
-  approveAllTransactionsCmd,
-  approveTransactionCmd,
-  createMultisigCmd,
-  createTransactionCmd,
-  deleteTransactionCmd,
-  executeTransactionCmd,
-  showAllTransactionsCmd,
-  showTransactionCmd,
-  upgradeProgramCmd,
-} from './cmd'
+import * as actions from './actions'
+import { initContext, useContext } from './context'
 
-log.setLevel('info')
+const DEFAULT_LOG_LEVEL = 'info'
+const DEFAULT_CLUSTER = 'devnet'
+const DEFAULT_KEYPAIR = `${process.env.HOME}/.config/solana/id.json`
 
 cli
   .version(version)
-  .option<web3.Cluster>(
-    '-e, --env <string>',
-    'Solana cluster env name',
-    c => c as web3.Cluster,
-    'devnet',
-  )
-  .option(
-    '-k, --keypair <file>',
-    'Solana wallet location',
-    `${process.env.HOME}/.config/solana/id.json`,
-  )
-  .option('-l, --log-level <string>', 'log level', (l: any) => l && log.setLevel(l))
-  .parseOptions(process.argv)
+  .allowExcessArguments(false)
+  .option('-c, --cluster <cluster>', 'Solana cluster', DEFAULT_CLUSTER)
+  .option('-k, --keypair <keypair>', 'Wallet keypair', DEFAULT_KEYPAIR)
+  .option('-l, --log-level <string>', 'Log level', (l: any) => l && log.setLevel(l), DEFAULT_LOG_LEVEL)
+  .hook('preAction', async (command: Command) => initContext(command.opts()))
 
-const opts = cli.opts()
+const multisig = cli.command('multisig')
 
-const cluster = opts.env
-const anchorOpts = AnchorProvider.defaultOptions()
-const connection = new web3.Connection(clusterUrl(cluster), anchorOpts.commitment)
-const wallet = new Wallet(Keypair.fromSecretKey(Buffer.from(JSON.parse(fs.readFileSync(opts.keypair).toString()))))
-const provider = new AnchorProvider(connection, wallet, anchorOpts)
-
-const client = new MultisigClient({
-  program: new Program(MultisigClient.IDL, MultisigClient.programId, provider),
-  wallet: provider.wallet,
-})
-
-cli.command('create-multisig')
+multisig.command('new')
   .description('Create new multisig')
-  .requiredOption('--keys <keys>', 'Owner keys (separated by comma)')
+  .requiredOption('-o, --owners <keys>', 'Owner keys (separated by comma)')
   .requiredOption('-t, --threshold <number>', 'Minimum number of owner approvals needed to sign a transaction')
-  .option('-k, --key <base58>', 'Multisig key (default auto-generated)')
-  .action(async (opts: any) => {
-    return createMultisigCmd({ provider, client, opts })
-  })
+  .option('--key <base58>', 'Multisig key (default auto-generated)')
+  .action(actions.createMultisigAction)
 
-cli.command('show-multisig')
+multisig.command('show')
   .argument('<key>', 'Multisig key')
   .action(async (key: string) => {
+    const { client } = useContext()
     const multisig = await client.getMultisig(key)
     console.log(JSON.stringify(multisig, null, 2))
   })
 
-cli.command('show-owned-multisig')
+multisig.command('show-owned')
   .description('Show all owned multisig accounts')
   .action(async () => {
+    const { client } = useContext()
     const list = await client.findMultisigByOwner(client.wallet.publicKey)
     log.info(JSON.stringify(list, null, 2))
   })
 
-cli.command('new-transaction')
+multisig.command('approve')
+  .description('Approve all pending transactions')
+  .requiredOption('-m, --multisig <key>', 'Multisig key')
+  .action(async (opts: any) => {
+    return actions.approveAllTransactionsAction(opts)
+  })
+
+const tx = cli.command('tx')
+
+tx.command('new')
   .argument('<file>', 'Instructions file')
   .requiredOption('-m, --multisig <key>', 'Multisig key')
   .option('-i, --index <number>', 'Custom transaction index')
   .action(async (file, opts: any) => {
-    return createTransactionCmd({ provider, client, opts: { ...opts, file } })
+    return actions.createTransactionAction({ ...opts, file })
   })
 
-cli.command('transactions')
+tx.command('all')
   .requiredOption('-m, --multisig <key>', 'Multisig key')
   .requiredOption('-i, --index <numbder>', 'Transaction index')
-  .action(async (opts: any) => {
-    return showAllTransactionsCmd({ provider, client, opts })
-  })
+  .action(actions.showAllTransactionsAction)
 
-cli.command('tx')
+tx.command('inspect')
   .argument('<index>', 'Transaction id')
   .requiredOption('-m, --multisig <key>', 'Multisig key')
   .action(async (index: number, opts: any) => {
-    return showTransactionCmd({ provider, client, opts: { ...opts, index } })
+    return actions.showTransactionAction({ ...opts, index })
   })
 
-cli.command('upgrade-program')
-  .argument('<key>', 'Program id')
-  .requiredOption('-m, --multisig <key>', 'Multisig key')
-  .action(async (programId, opts: any) => {
-    return upgradeProgramCmd({ provider, client, opts: { ...opts, programId } })
-  })
-
-cli.command('delete-transaction')
+tx.command('delete')
   .argument('<index>', 'Transaction id')
   .requiredOption('-m, --multisig <key>', 'Multisig key')
   .action((index: number, opts: any) => {
-    return deleteTransactionCmd({ provider, client, opts: { ...opts, index } })
+    return actions.deleteTransactionAction({ ...opts, index })
   })
 
-cli.command('approve')
+tx.command('approve')
   .argument('<index>', 'Transaction id')
   .requiredOption('-m, --multisig <key>', 'Multisig key')
   .action(async (index: string, opts: any) => {
-    return approveTransactionCmd({ provider, client, opts: { ...opts, index } })
+    return actions.approveTransactionAction({ ...opts, index })
   })
 
-cli.command('approve-all')
-  .requiredOption('-m, --multisig <key>', 'Multisig key')
-  .action(async (opts: any) => {
-    return approveAllTransactionsCmd({ provider, client, opts })
-  })
-
-cli.command('execute')
+tx.command('execute')
   .argument('<index>', 'Transaction index')
   .requiredOption('-m, --multisig <key>', 'Multisig key')
   .action(async (index: string, opts: any) => {
-    return executeTransactionCmd({ provider, client, opts: { ...opts, index } })
+    return actions.executeTransactionAction({ ...opts, index })
   })
 
-cli.parse()
+const action = cli.command('action')
+
+action.command('upgrade-program')
+  .argument('<key>', 'Program id')
+  .requiredOption('-m, --multisig <key>', 'Multisig key')
+  .action(async (programId, opts: any) => {
+    return actions.updateProgramAction({ ...opts, programId })
+  })
+
+cli.parseAsync(process.argv).then(
+  () => {},
+  (e: unknown) => {
+    throw e
+  },
+)

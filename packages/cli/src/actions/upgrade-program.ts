@@ -1,28 +1,27 @@
 import { Buffer } from 'buffer'
-import type { Address } from '@project-serum/anchor'
 import { web3 } from '@project-serum/anchor'
 import log from 'loglevel'
-import type { CmdContext } from './index'
+import { useContext } from '../context'
 
-export const BPF_UPGRADE_LOADER_ID = new web3.PublicKey(
+const BPF_UPGRADE_LOADER_ID = new web3.PublicKey(
   'BPFLoaderUpgradeab1e11111111111111111111111',
 )
 
-interface Context extends CmdContext {
-  opts: {
-    index: number
-    multisig: Address
-    programId: web3.PublicKey
-    bufferAddr: web3.PublicKey
-  }
+interface Opts {
+  index: number
+  multisig: string
+  programId: string
+  bufferAddr: string
 }
 
-export async function upgradeProgramCmd({ provider, client, opts }: Context) {
-  const { programId, bufferAddr } = opts
+export async function updateProgramAction(opts: Opts) {
+  const { provider, client } = useContext()
+  const programId = new web3.PublicKey(opts.programId)
+  const bufferAddr = new web3.PublicKey(opts.bufferAddr)
 
-  const programAccount = await provider.connection.getAccountInfo(new web3.PublicKey(programId))
+  const programAccount = await provider.connection.getAccountInfo(programId)
   if (programAccount === null) {
-    throw new Error('Unknown program')
+    throw new Error(`Unknown program ${programId}`)
   }
 
   const spillAddr = client.wallet.publicKey
