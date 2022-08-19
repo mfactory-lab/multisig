@@ -1,10 +1,11 @@
 mod events;
 mod state;
 
+use std::convert::Into;
+
 use anchor_lang::{prelude::*, solana_program};
 use events::*;
 use state::*;
-use std::convert::Into;
 
 declare_id!("4GUuiefBoY1Qeou69d2bM2mQTEgr8wBFes3KqZaFXZzn");
 
@@ -48,14 +49,12 @@ pub mod multisig {
 
     /// Creates a new transaction account, automatically signed by the creator,
     /// which must be one of the owners of the multisig.
-    pub fn create_transaction(
-        ctx: Context<CreateTransaction>,
-        instructions: Vec<TxInstruction>,
-    ) -> Result<()> {
+    pub fn create_transaction(ctx: Context<CreateTransaction>, instructions: Vec<TxInstruction>) -> Result<()> {
         let multisig = &mut ctx.accounts.multisig;
 
-        let owner_index =
-            multisig.owner_index(ctx.accounts.proposer.key).ok_or(ErrorCode::InvalidOwner)?;
+        let owner_index = multisig
+            .owner_index(ctx.accounts.proposer.key)
+            .ok_or(ErrorCode::InvalidOwner)?;
 
         let mut signers = Vec::new();
         signers.resize(multisig.owners.len(), false);
@@ -90,8 +89,9 @@ pub mod multisig {
     pub fn approve(ctx: Context<Approve>) -> Result<()> {
         let multisig = &ctx.accounts.multisig;
 
-        let owner_index =
-            multisig.owner_index(ctx.accounts.owner.key).ok_or(ErrorCode::InvalidOwner)?;
+        let owner_index = multisig
+            .owner_index(ctx.accounts.owner.key)
+            .ok_or(ErrorCode::InvalidOwner)?;
 
         let tx = &mut ctx.accounts.transaction;
 
@@ -134,7 +134,10 @@ pub mod multisig {
     /// change_threshold.
     pub fn change_threshold(ctx: Context<Auth>, threshold: u8) -> Result<()> {
         let multisig = &mut ctx.accounts.multisig;
-        require!(threshold > 0 && threshold <= multisig.owners.len() as u8, InvalidThreshold);
+        require!(
+            threshold > 0 && threshold <= multisig.owners.len() as u8,
+            InvalidThreshold
+        );
         multisig.threshold = threshold;
         Ok(())
     }

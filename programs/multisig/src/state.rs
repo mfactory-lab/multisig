@@ -109,7 +109,17 @@ impl From<&TxInstruction> for Instruction {
 }
 
 impl From<TxAccountMeta> for AccountMeta {
-    fn from(TxAccountMeta { pubkey, is_signer, is_writable }: TxAccountMeta) -> AccountMeta {
-        AccountMeta { pubkey, is_signer, is_writable }
+    fn from(
+        TxAccountMeta {
+            pubkey,
+            is_signer,
+            is_writable,
+        }: TxAccountMeta,
+    ) -> AccountMeta {
+        AccountMeta {
+            pubkey,
+            is_signer,
+            is_writable,
+        }
     }
 }
