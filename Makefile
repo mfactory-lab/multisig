@@ -5,7 +5,8 @@ cwd = $(shell pwd)
 #cluster = https://solana-api.projectserum.com
 #cluster = https://mainnet.rpcpool.com
 #cluster = mainnet
-cluster = devnet
+#cluster = devnet
+cluster = https://devnet.genesysgo.net
 program = multisig
 
 # get program id by name
@@ -34,3 +35,7 @@ upgrade: build ## Upgrade program
 .PHONY: test
 test: ## Test program
 	anchor test --skip-lint --provider.cluster localnet
+
+.PHONY: upgrade-secure
+upgrade-secure:
+	solana program write-buffer -v $BPF_FILE >temp/buffer.txt
