@@ -53,7 +53,7 @@ describe('multisig', () => {
       owners: newOwners,
     })
 
-    const [signer] = await client.pda.signer(multisigAddr)
+    const [signer] = await client.pda.multisigSigner(multisigAddr)
 
     const index = 0
 
@@ -178,10 +178,43 @@ describe('multisig', () => {
     assert.deepStrictEqual(multisig.ownerSetSeqno, 1)
   })
 
+  it('can create transaction with auto-generated index', async () => {
+    const [signer] = await client.pda.multisigSigner(multisigAddr)
+
+    const ix = web3.SystemProgram.transfer({
+      fromPubkey: signer,
+      toPubkey: new web3.PublicKey(multisigAddr),
+      lamports: web3.LAMPORTS_PER_SOL,
+    })
+
+    const { transaction, key } = await client.createTransaction({
+      multisig: multisigAddr,
+      instructions: [ix],
+    })
+
+    try {
+      await provider.sendAndConfirm(transaction)
+    } catch (e) {
+      console.log(e)
+      throw e
+    }
+
+    const tx = await client.fetchTransaction(key)
+    if (!tx) {
+      throw new Error('Invalid transaction')
+    }
+
+    assert.equal(tx.index, 1)
+    assert.equal(tx.proposer.toBase58(), client.wallet.publicKey.toBase58())
+    assert.deepEqual(tx.instructions, [ix])
+  })
+
   it('can not change threshold off-chain', async () => {
+    const [multisigSigner] = await client.pda.multisigSigner(multisigAddr)
+
     const transaction = await client.program.methods
       .changeThreshold(3)
-      .accounts({ multisig: multisigAddr })
+      .accounts({ multisig: multisigAddr, multisigSigner })
       .transaction()
 
     try {
@@ -193,9 +226,11 @@ describe('multisig', () => {
   })
 
   it('can not set owners off-chain', async () => {
+    const [multisigSigner] = await client.pda.multisigSigner(multisigAddr)
+
     const transaction = await client.program.methods
       .setOwners([ownerA.publicKey, ownerB.publicKey])
-      .accounts({ multisig: multisigAddr })
+      .accounts({ multisig: multisigAddr, multisigSigner })
       .transaction()
 
     try {
