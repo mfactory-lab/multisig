@@ -27,27 +27,30 @@ export async function updateProgramAction(opts: Opts) {
   const spillAddr = client.wallet.publicKey
   const programDataAddr = new web3.PublicKey(programAccount.data.slice(4))
   const [multisigKey] = await client.pda.multisig(opts.multisig)
-  const [authority] = await client.pda.signer(multisigKey)
+  const [authority] = await client.pda.multisigSigner(multisigKey)
+
+  log.info(`Multisig key: ${multisigKey}`)
+  log.info(`Authority key: ${authority}`)
 
   const keys = [
-    { pubkey: authority, isWritable: true, isSigner: true },
+    { pubkey: authority, isWritable: authority, isSigner: false },
     { pubkey: programId, isWritable: true, isSigner: false },
     { pubkey: programDataAddr, isWritable: true, isSigner: false },
     { pubkey: bufferAddr, isWritable: true, isSigner: false },
-    { pubkey: spillAddr, isWritable: false, isSigner: false },
+    { pubkey: spillAddr, isWritable: true, isSigner: true },
     { pubkey: web3.SYSVAR_RENT_PUBKEY, isWritable: false, isSigner: false },
     { pubkey: web3.SYSVAR_CLOCK_PUBKEY, isWritable: false, isSigner: false },
   ] as any
 
-  const instructions = [new web3.TransactionInstruction({
-    programId: BPF_UPGRADE_LOADER_ID,
-    keys,
-    data: Buffer.from([3, 0, 0, 0]),
-  })]
-
   const { transaction, key } = await client.createTransaction({
     multisig: multisigKey,
-    instructions,
+    instructions: [
+      new web3.TransactionInstruction({
+        programId: BPF_UPGRADE_LOADER_ID,
+        keys,
+        data: Buffer.from([3, 0, 0, 0]),
+      }),
+    ],
     index: opts.index ?? null,
   })
 

@@ -29,11 +29,16 @@ export async function createTransactionAction(opts: any) {
 }
 
 export async function showTransactionAction(opts: any) {
-  const { client } = useContext()
-  const { cluster, index } = opts
+  const { cluster, client } = useContext()
+  const { index } = opts
 
   const [multisig] = await client.pda.multisig(opts.multisig)
   const transaction = await client.getTransaction(multisig, index)
+
+  if (!transaction) {
+    log.error(`Invalid transaction #${index}`)
+    return
+  }
 
   const tx = new web3.Transaction()
   tx.feePayer = client.wallet.publicKey
@@ -41,10 +46,11 @@ export async function showTransactionAction(opts: any) {
 
   const { base64, url } = inspectTransaction(tx, cluster)
 
-  log.info('Encoded Transaction Message:')
+  log.info('Encoded Transaction:')
   log.info(`${base64}\n`)
   log.info('Inspection Link:')
   log.info(url)
+  log.info('\n')
 }
 
 export async function showAllTransactionsAction(opts: any) {

@@ -5,7 +5,7 @@ import { useContext } from '../context'
 export async function transferSolAction(opts: any) {
   const { client, provider } = useContext()
   const [multisigKey] = await client.pda.multisig(opts.multisig)
-  const [signer] = await client.pda.signer(multisigKey)
+  const [signer] = await client.pda.multisigSigner(multisigKey)
 
   const instruction = web3.SystemProgram.transfer({
     fromPubkey: signer,

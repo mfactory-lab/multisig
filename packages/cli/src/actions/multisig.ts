@@ -4,18 +4,17 @@ import { useContext } from '../context'
 
 export async function createMultisigAction(opts: any) {
   const { provider, client } = useContext()
-  const owners = new Set(opts.keys.split(','))
 
-  owners.add(client.wallet.publicKey.toBase58())
+  const owners = new Set<string>(opts.keys.split(',')).add(client.wallet.publicKey.toBase58())
 
   const { transaction, key } = await client.createMultisig({
-    owners: [...owners].map(k => new web3.PublicKey(k as string)),
+    owners: [...owners].map(k => new web3.PublicKey(k)),
     threshold: Number(opts.threshold),
     key: opts.key ?? null,
   })
 
   const [multisigKey] = await client.pda.multisig(key)
-  const [signer] = await client.pda.signer(multisigKey)
+  const [signer] = await client.pda.multisigSigner(multisigKey)
 
   try {
     await provider.sendAndConfirm(transaction)
