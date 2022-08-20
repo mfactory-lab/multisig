@@ -3,7 +3,7 @@ import type { Address, Program } from '@project-serum/anchor'
 import * as bs58 from 'bs58'
 import { IDL } from './idl'
 import type { Multisig, Transaction } from './interfaces'
-import { toBytesInt32 } from './utils'
+import { toLeInt32Bytes } from './utils'
 
 const ID = new web3.PublicKey('4GUuiefBoY1Qeou69d2bM2mQTEgr8wBFes3KqZaFXZzn')
 
@@ -26,7 +26,7 @@ export class MultisigClient {
   }
 
   get pda() {
-    return new MultisigPDA(this.program.programId)
+    return new MultisigPDA()
   }
 
   async createMultisig(props: CreateMultisigProps) {
@@ -68,7 +68,7 @@ export class MultisigClient {
     return await this.fetchMultisig((await this.pda.multisig(key))[0])
   }
 
-  async findMultisigByOwner(owner: web3.PublicKey) {
+  async findOwnedMultisig(owner: web3.PublicKey) {
     const accounts = await this.program.account.multisig.all([
       // TODO: optimize
     ])
@@ -76,12 +76,17 @@ export class MultisigClient {
   }
 
   async createTransaction(props: CreateTransactionProps) {
-    const { multisig } = props
+    const { multisig, instructions } = props
+
+    if (!instructions) {
+      throw new Error('No instructions found')
+    }
+
     const index = props.index ?? (await this.fetchMultisig(multisig))?.transactionCount ?? 0
     const [key] = await this.pda.transaction(multisig, index)
 
     const transaction = await this.program.methods
-      .createTransaction(props.instructions)
+      .createTransaction(instructions)
       .accounts({
         multisig,
         transaction: key,
@@ -111,7 +116,7 @@ export class MultisigClient {
       { memcmp: { offset: 8, bytes: new web3.PublicKey(props.multisig).toBase58() } },
     ]
     if (props.index !== undefined) {
-      filters.push({ memcmp: { offset: 8 + 32, bytes: bs58.encode(toBytesInt32(+props.index)) } })
+      filters.push({ memcmp: { offset: 8 + 32, bytes: bs58.encode(toLeInt32Bytes(+props.index)) } })
     }
     if (props.proposer !== undefined) {
       filters.push({ memcmp: { offset: 8 + 32 + 4, bytes: new web3.PublicKey(props.proposer).toBase58() } })
@@ -125,7 +130,7 @@ export class MultisigClient {
   async executeTransaction(props: ExecuteTransactionProps) {
     const [transactionPda] = await this.pda.transaction(props.multisig, props.index)
     const { instructions } = await this.program.account.transaction.fetch(transactionPda) as Transaction
-    const [signer] = await this.pda.signer(props.multisig)
+    const [signer] = await this.pda.multisigSigner(props.multisig)
 
     const transaction = await this.program.methods
       .executeTransaction()
@@ -173,7 +178,7 @@ export class MultisigClient {
       owners: props.owners,
     })
 
-    const [signer] = await this.pda.signer(props.multisig)
+    const [signer] = await this.pda.multisigSigner(props.multisig)
 
     const instruction = new web3.TransactionInstruction({
       programId: this.program.programId,
@@ -201,7 +206,7 @@ export class MultisigClient {
     const data = this.program.coder.instruction.encode('change_threshold', {
       threshold: props.threshold,
     })
-    const [signer] = await this.pda.signer(props.multisig)
+    const [signer] = await this.pda.multisigSigner(props.multisig)
 
     const instruction = new web3.TransactionInstruction({
       programId: this.program.programId,
@@ -230,9 +235,7 @@ const MULTISIG_SEED_PREFIX = 'multisig'
 const TRANSACTION_SEED_PREFIX = 'transaction'
 
 class MultisigPDA {
-  constructor(private programId: web3.PublicKey) {}
-
-  signer = (multisig: Address) => this.pda([
+  multisigSigner = (multisig: Address) => this.pda([
     new web3.PublicKey(multisig).toBuffer(),
   ])
 
@@ -244,11 +247,11 @@ class MultisigPDA {
   transaction = (multisig: Address, index: number) => this.pda([
     Buffer.from(TRANSACTION_SEED_PREFIX),
     new web3.PublicKey(multisig).toBuffer(),
-    toBytesInt32(index),
+    toLeInt32Bytes(index),
   ])
 
   private async pda(seeds: Array<Buffer | Uint8Array>) {
-    return await web3.PublicKey.findProgramAddress(seeds, this.programId)
+    return await web3.PublicKey.findProgramAddress(seeds, MultisigClient.programId)
   }
 }
 
