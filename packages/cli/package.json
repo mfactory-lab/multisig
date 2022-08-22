@@ -1,6 +1,6 @@
 {
   "name": "@multisig/cli",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "dependencies": {
     "commander": "^9.3.0",
     "chalk": "^4.1.2",
