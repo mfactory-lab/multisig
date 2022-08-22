@@ -10,7 +10,7 @@ export const clusterUrl = (c: Cluster) => {
       // return 'https://solana-api.projectserum.com/'
       return 'https://solana-api.syndica.io/access-token/Ay411Gnu2mddZxXvj594Dvlt4LHLhWCGCtXueiPr9OJy6IAGBY1X9D1wYndnozXb/rpc'
   }
-  return clusterApiUrl(c)
+  return clusterApiUrl(c as any)
 }
 
 /**

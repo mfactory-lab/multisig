@@ -4,22 +4,25 @@ import log from 'loglevel'
 import { inspectTransaction } from '../utils'
 import { useContext } from '../context'
 
-export async function createTransactionAction(opts: any) {
+export async function createTransactionAction(file: string, opts: any) {
   const { provider, client } = useContext()
   const [multisigKey] = await client.pda.multisig(opts.multisig)
 
-  const instructions = Array.from(JSON.parse(fs.readFileSync(opts.keypair).toString()))
+  const instructions = Array.from(JSON.parse(fs.readFileSync(file).toString()))
     .map((i: any) => new web3.TransactionInstruction(i))
+
+  const index = opts.index ?? null
 
   const { transaction, key } = await client.createTransaction({
     multisig: multisigKey,
     instructions,
-    index: opts.index ?? null,
+    index,
   })
 
   try {
     const sig = await provider.sendAndConfirm(transaction)
-    log.info(`Key: ${key.toBase58()}`)
+    log.info(`Tx: ${key.toBase58()}`)
+    log.info(`Index: ${index}`)
     log.info(`Signature: ${sig}`)
     log.info('OK')
   } catch (e) {
@@ -28,15 +31,13 @@ export async function createTransactionAction(opts: any) {
   }
 }
 
-export async function showTransactionAction(opts: any) {
-  const { cluster, client } = useContext()
-  const { index } = opts
-
+export async function inspectTransactionAction(index: number, opts: any) {
+  const { client, cluster } = useContext()
   const [multisig] = await client.pda.multisig(opts.multisig)
   const transaction = await client.getTransaction(multisig, index)
 
   if (!transaction) {
-    log.error(`Invalid transaction #${index}`)
+    log.error(`Unknown transaction #${index}`)
     return
   }
 
@@ -46,6 +47,9 @@ export async function showTransactionAction(opts: any) {
 
   const { base64, url } = inspectTransaction(tx, cluster)
 
+  log.info(`Index: ${transaction.index}`)
+  log.info(`Signers: ${transaction.signers}`)
+  log.info(`Instructions: ${JSON.stringify(transaction.instructions)}`)
   log.info('Encoded Transaction:')
   log.info(`${base64}\n`)
   log.info('Inspection Link:')
@@ -60,10 +64,8 @@ export async function showAllTransactionsAction(opts: any) {
   log.info(JSON.stringify(transactions, null, 2))
 }
 
-export async function deleteTransactionAction(opts: any) {
-  const { client } = useContext()
-  const { cluster, index } = opts
-
+export async function deleteTransactionAction(index: number, opts: any) {
+  const { client, cluster } = useContext()
   const [multisig] = await client.pda.multisig(opts.multisig)
   const transaction = await client.getTransaction(multisig, index)
 

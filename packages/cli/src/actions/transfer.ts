@@ -13,7 +13,7 @@ export async function transferSolAction(opts: any) {
     lamports: web3.LAMPORTS_PER_SOL,
   })
 
-  const { transaction, key } = await client.createTransaction({
+  const { transaction, index, key } = await client.createTransaction({
     multisig: multisigKey,
     instructions: [instruction],
     index: opts.index ?? null,
@@ -22,6 +22,7 @@ export async function transferSolAction(opts: any) {
   try {
     const sig = await provider.sendAndConfirm(transaction)
     log.info(`Tx: ${key.toBase58()}`)
+    log.info(`Index: ${index}`)
     log.info(`Signature: ${sig}`)
     log.info('OK')
   } catch (e) {

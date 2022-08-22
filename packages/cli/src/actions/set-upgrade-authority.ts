@@ -1,4 +1,5 @@
 import { Buffer } from 'buffer'
+import type { Address } from '@project-serum/anchor'
 import { web3 } from '@project-serum/anchor'
 import log from 'loglevel'
 import { useContext } from '../context'
@@ -8,21 +9,14 @@ const BPF_UPGRADE_LOADER_ID = new web3.PublicKey('BPFLoaderUpgradeab1e1111111111
 
 interface Opts {
   multisig: string
-  index: number
-  spillAddr?: string
+  newUpgradeAuthority: Address
 }
 
-export async function updateProgramAction(programId: string, bufferKey: string, opts: Opts) {
+export async function setUpgradeAuthorityAction(programId: string, opts: Opts) {
   const { provider, client } = useContext()
 
   const program = new web3.PublicKey(programId)
-  const buffer = new web3.PublicKey(bufferKey)
-
-  // const programAccount = await provider.connection.getAccountInfo(programId)
-  // if (programAccount === null) {
-  //   throw new Error(`Unknown program ${programId}`)
-  // }
-  // const programDataKey = new web3.PublicKey(programAccount.data.slice(4))
+  const newAuthority = new web3.PublicKey(opts.newUpgradeAuthority)
 
   const [programDataKey] = await web3.PublicKey.findProgramAddress(
     [program.toBuffer()],
@@ -32,20 +26,14 @@ export async function updateProgramAction(programId: string, bufferKey: string, 
   const [multisig] = await client.pda.multisig(opts.multisig)
   const [authority] = await client.pda.multisigSigner(multisig)
 
-  const spill = opts.spillAddr ? new web3.PublicKey(opts.spillAddr) : authority
-
   const instruction = new web3.TransactionInstruction({
     keys: [
-      { pubkey: programDataKey, isWritable: true, isSigner: false },
-      { pubkey: program, isWritable: true, isSigner: false },
-      { pubkey: buffer, isWritable: true, isSigner: false },
-      { pubkey: spill, isWritable: true, isSigner: false },
-      { pubkey: web3.SYSVAR_RENT_PUBKEY, isWritable: false, isSigner: false },
-      { pubkey: web3.SYSVAR_CLOCK_PUBKEY, isWritable: false, isSigner: false },
-      { pubkey: authority, isWritable: false, isSigner: true },
+      { pubkey: programDataKey, isSigner: false, isWritable: true },
+      { pubkey: authority, isSigner: true, isWritable: false },
+      { pubkey: newAuthority, isSigner: false, isWritable: false },
     ] as any,
     programId: BPF_UPGRADE_LOADER_ID,
-    data: Buffer.from([3, 0, 0, 0]),
+    data: Buffer.from([4, 0, 0, 0]),
   })
 
   const { transaction, index } = await client.createTransaction({
