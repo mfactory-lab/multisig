@@ -97,6 +97,7 @@ export class MultisigClient {
 
     return {
       key,
+      index,
       transaction,
     }
   }
@@ -235,13 +236,13 @@ const MULTISIG_SEED_PREFIX = 'multisig'
 const TRANSACTION_SEED_PREFIX = 'transaction'
 
 class MultisigPDA {
-  multisigSigner = (multisig: Address) => this.pda([
-    new web3.PublicKey(multisig).toBuffer(),
-  ])
-
   multisig = (key: Address) => this.pda([
     Buffer.from(MULTISIG_SEED_PREFIX),
     new web3.PublicKey(key).toBuffer(),
+  ])
+
+  multisigSigner = (multisig: Address) => this.pda([
+    new web3.PublicKey(multisig).toBuffer(),
   ])
 
   transaction = (multisig: Address, index: number) => this.pda([
