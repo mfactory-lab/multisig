@@ -11,7 +11,8 @@
       "./node_modules/@types"
     ],
     "lib": [
-      "esnext"
+      "esnext",
+      "dom"
     ],
     "strict": true,
     "esModuleInterop": true,
