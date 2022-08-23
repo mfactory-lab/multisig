@@ -2,8 +2,8 @@ use anchor_lang::{prelude::*, solana_program::instruction::Instruction};
 
 #[account]
 pub struct Multisig {
-    /// Key used as id to derive
-    pub key: Pubkey,
+    /// Base key used to generate the PDA.
+    pub base: [u8; 32],
     /// Owners of the [Multisig]
     pub owners: Vec<Pubkey>,
     /// Minimum number of owner approvals needed to sign a [Transaction]

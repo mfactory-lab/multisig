@@ -17,7 +17,7 @@ pub mod multisig {
     /// a set of owners and a threshold.
     pub fn create_multisig(
         ctx: Context<CreateMultisig>,
-        key: Pubkey,
+        base: [u8; 32],
         owners: Vec<Pubkey>,
         threshold: u8,
     ) -> Result<()> {
@@ -27,7 +27,7 @@ pub mod multisig {
         assert_unique_owners(&owners)?;
 
         let multisig = &mut ctx.accounts.multisig;
-        multisig.key = key;
+        multisig.base = base;
         multisig.owners = owners.clone();
         multisig.threshold = threshold;
         multisig.transaction_count = 0;
@@ -183,10 +183,7 @@ pub mod multisig {
 pub struct CreateMultisig<'info> {
     #[account(
         init,
-        seeds = [
-            Multisig::SEED_PREFIX,
-            key.as_ref()
-        ],
+        seeds = [Multisig::SEED_PREFIX, key.as_ref()],
         bump,
         payer = payer,
         space = Multisig::space(owners.len() as u8),
@@ -202,7 +199,7 @@ pub struct CreateMultisig<'info> {
 pub struct CreateTransaction<'info> {
     #[account(
         mut,
-        seeds = [Multisig::SEED_PREFIX, multisig.key.as_ref()],
+        seeds = [Multisig::SEED_PREFIX, multisig.base.as_ref()],
         bump = multisig.bump,
     )]
     multisig: Box<Account<'info, Multisig>>,
