@@ -27,8 +27,13 @@ export type Multisig = {
       ],
       "args": [
         {
-          "name": "key",
-          "type": "publicKey"
+          "name": "base",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "owners",
@@ -214,11 +219,16 @@ export type Multisig = {
         "kind": "struct",
         "fields": [
           {
-            "name": "key",
+            "name": "base",
             "docs": [
-              "Key used as id to derive"
+              "Base key used to generate the PDA."
             ],
-            "type": "publicKey"
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
             "name": "owners",
@@ -590,8 +600,13 @@ export const IDL: Multisig = {
       ],
       "args": [
         {
-          "name": "key",
-          "type": "publicKey"
+          "name": "base",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "owners",
@@ -777,11 +792,16 @@ export const IDL: Multisig = {
         "kind": "struct",
         "fields": [
           {
-            "name": "key",
+            "name": "base",
             "docs": [
-              "Key used as id to derive"
+              "Base key used to generate the PDA."
             ],
-            "type": "publicKey"
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
           },
           {
             "name": "owners",

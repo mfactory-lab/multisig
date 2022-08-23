@@ -6,3 +6,7 @@ export function toLeInt32Bytes(num: number) {
     (num & 0xFF000000) >> 24,
   ])
 }
+
+export function strToBytes(base: string, limit = 32) {
+  return new TextEncoder().encode(base.padEnd(limit, '\0')).slice(0, limit)
+}

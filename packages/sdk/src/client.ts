@@ -3,9 +3,13 @@ import type { Address, Program } from '@project-serum/anchor'
 import * as bs58 from 'bs58'
 import { IDL } from './idl'
 import type { Multisig, Transaction } from './interfaces'
-import { toLeInt32Bytes } from './utils'
+import { strToBytes, toLeInt32Bytes } from './utils'
 
 const ID = new web3.PublicKey('4GUuiefBoY1Qeou69d2bM2mQTEgr8wBFes3KqZaFXZzn')
+
+const MULTISIG_BASE_LIMIT = 32
+const MULTISIG_SEED_PREFIX = 'multisig'
+const TRANSACTION_SEED_PREFIX = 'transaction'
 
 export class MultisigClient {
   static programId = ID
@@ -30,20 +34,13 @@ export class MultisigClient {
   }
 
   async createMultisig(props: CreateMultisigProps) {
-    let key = props.key
+    const base = props.base ?? web3.Keypair.generate().publicKey.toString()
 
-    if (!key) {
-      const kp = web3.Keypair.generate()
-      key = kp.publicKey
-    }
-
-    key = new web3.PublicKey(key)
-
-    const [multisig] = await this.pda.multisig(key)
+    const [multisig] = await this.pda.multisig(base)
     const payer = this.wallet.publicKey
     const transaction = await this.program.methods
       .createMultisig(
-        key,
+        strToBytes(base, MULTISIG_BASE_LIMIT) as any,
         props.owners.map(o => new web3.PublicKey(o)),
         props.threshold,
       )
@@ -55,7 +52,7 @@ export class MultisigClient {
       .transaction()
 
     return {
-      key,
+      base,
       transaction,
     }
   }
@@ -64,8 +61,9 @@ export class MultisigClient {
     return await this.program.account.multisig.fetchNullable(address) as unknown as Multisig
   }
 
-  async getMultisig(key: Address) {
-    return await this.fetchMultisig((await this.pda.multisig(key))[0])
+  async getMultisig(base: string) {
+    const [addr] = await this.pda.multisig(base)
+    return await this.fetchMultisig(addr)
   }
 
   async findOwnedMultisig(owner: web3.PublicKey) {
@@ -232,13 +230,10 @@ export class MultisigClient {
   }
 }
 
-const MULTISIG_SEED_PREFIX = 'multisig'
-const TRANSACTION_SEED_PREFIX = 'transaction'
-
 class MultisigPDA {
-  multisig = (key: Address) => this.pda([
+  multisig = (base: string) => this.pda([
     Buffer.from(MULTISIG_SEED_PREFIX),
-    new web3.PublicKey(key).toBuffer(),
+    strToBytes(base, MULTISIG_BASE_LIMIT),
   ])
 
   multisigSigner = (multisig: Address) => this.pda([
@@ -270,7 +265,7 @@ interface MultisigClientProps {
 interface CreateMultisigProps {
   owners: Address[]
   threshold: number
-  key?: Address
+  base?: string
 }
 
 interface CreateTransactionProps {
