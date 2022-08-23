@@ -31,7 +31,7 @@ multisig.command('new')
   .description('Create new multisig')
   .requiredOption('-o, --owners <OWNER_KEYS>', 'Owner keys (separated by comma)')
   .requiredOption('-t, --threshold <THRESHOLD>', 'Minimum number of owner approvals needed to sign a transaction')
-  .option('--key <base58>', 'Multisig key (default auto-generated)')
+  .option('-b, --base <BASE_KEY>', 'Base key (default: random 32 bytes)')
   .action(actions.createMultisigAction)
 
 multisig.command('show')

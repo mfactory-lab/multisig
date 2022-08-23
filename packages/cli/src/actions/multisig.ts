@@ -3,23 +3,29 @@ import log from 'loglevel'
 import chalk from 'chalk'
 import { useContext } from '../context'
 
-export async function createMultisigAction(opts: any) {
+interface Opts {
+  owners: string
+  threshold: string
+  base?: string
+}
+
+export async function createMultisigAction(opts: Opts) {
   const { provider, client } = useContext()
 
-  const owners = new Set<string>(opts.keys.split(',')).add(client.wallet.publicKey.toBase58())
+  const owners = new Set<string>(opts.owners.split(',')).add(client.wallet.publicKey.toBase58())
 
-  const { transaction, key } = await client.createMultisig({
+  const { base, transaction } = await client.createMultisig({
     owners: [...owners].map(k => new web3.PublicKey(k)),
     threshold: Number(opts.threshold),
-    key: opts.key ?? null,
+    base: opts.base,
   })
 
-  const [multisigKey] = await client.pda.multisig(key)
+  const [multisigKey] = await client.pda.multisig(base)
   const [signer] = await client.pda.multisigSigner(multisigKey)
 
   try {
     await provider.sendAndConfirm(transaction)
-    log.info(`Multisig Key: ${key.toBase58()}`)
+    log.info(`Multisig Base: ${base}`)
     log.info(`Multisig Address: ${multisigKey.toBase58()}`)
     log.info(`Signer Address: ${signer.toBase58()}`)
     log.info('OK')
@@ -29,15 +35,15 @@ export async function createMultisigAction(opts: any) {
   }
 }
 
-export async function showMultisigAction(key: string) {
+export async function showMultisigAction(base: string) {
   const { client } = useContext()
-  const multisig = await client.getMultisig(key)
+  const multisig = await client.getMultisig(base)
 
-  const [multisigKey] = await client.pda.multisig(multisig.key)
+  const [multisigKey] = await client.pda.multisig(base)
   const [signer] = await client.pda.multisigSigner(multisigKey)
 
   log.info(chalk.cyan('--------------------------------------------------------------------------'))
-  log.info(chalk.cyan(`MULTISIG: ${multisig.key.toBase58()}`))
+  log.info(chalk.cyan(`MULTISIG: ${base}`))
   log.info(chalk.cyan(`Address: ${multisigKey}`))
   log.info(chalk.cyan(`Signer: ${signer.toBase58()}`))
   log.info(chalk.cyan('--------------------------------------------------------------------------'))
