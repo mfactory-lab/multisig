@@ -32,10 +32,10 @@ describe('multisig', () => {
 
   it('can create multisig', async () => {
     const threshold = 2
-    const { transaction, key } = await client.createMultisig({ owners, threshold })
+    const { transaction, base } = await client.createMultisig({ owners, threshold })
     await provider.sendAndConfirm(transaction)
 
-    multisigAddr = (await client.pda.multisig(key))[0]
+    multisigAddr = (await client.pda.multisig(base))[0]
 
     const multisig = await client.fetchMultisig(multisigAddr)
     if (!multisig) {
