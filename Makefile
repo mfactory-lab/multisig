@@ -39,3 +39,8 @@ test: ## Test program
 .PHONY: upgrade
 upgrade: build ## Upgrade program
 	anchor upgrade -p $(program_id) --provider.cluster $(cluster) ./target/deploy/$(program).so
+
+.PHONY: rs-cli-build
+rs-cli-build:	
+	cd packages/rs-cli
+	cargo build

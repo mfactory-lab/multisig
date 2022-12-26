@@ -1,5 +1,5 @@
 mod events;
-mod state;
+pub mod state;
 
 use std::convert::Into;
 
